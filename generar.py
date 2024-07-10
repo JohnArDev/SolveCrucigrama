@@ -264,7 +264,7 @@ def main():
 
     # Print result
     if asignacion is None:
-        print("No solution.")
+        print("No hay solucion PE")
     else:
         creador.print(asignacion)
         if output:
