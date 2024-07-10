@@ -201,6 +201,23 @@ class CreadorCrucigrama():
 
         return no_asignadas[0]
 
+    def inferencia(self, asignacion, var):
+        """
+        Realiza la inferencia de AC-3 en los dominios.
+        """
+        inferences = {}
+        queue = [(x, var) for x in self.crucigrama.vecinos(var)]
+
+        while queue:
+            (x, y) = queue.pop()
+            if self.revisar(x, y):
+                if not self.dominios[x]:
+                    return None
+                inferences[x] = self.dominios[x].copy()
+                for z in self.crucigrama.vecinos(x) - {y}:
+                    queue.append((z, x))
+        return inferences
+
     def backtrack(self, asignacion):
         """
         Usando la Búsqueda Backtrack, toma como entrada una asignación parcial para el
@@ -215,12 +232,17 @@ class CreadorCrucigrama():
 
         var = self.seleccionar_variable_no_asignada(asignacion)
         for valor in self.ordenar_valores_dominio(var, asignacion):
-            nueva_asignacion = asignacion.copy()
-            nueva_asignacion[var] = valor
-            if self.consistencia(nueva_asignacion):
-                resultado = self.backtrack(nueva_asignacion)
-                if resultado is not None:
-                    return resultado
+            if self.consistencia(asignacion):
+                asignacion[var] = valor
+                inferences = self.inferencia(asignacion, var)
+                if inferences is not None:
+                    self.dominios.update(inferences)
+                    resultado = self.backtrack(asignacion)
+                    if resultado is not None:
+                        return resultado
+                    for infer_var in inferences:
+                        self.dominios[infer_var] = inferences[infer_var]
+                asignacion.pop(var)
         return None
 
 
