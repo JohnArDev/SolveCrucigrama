@@ -99,9 +99,7 @@ class CreadorCrucigrama():
         en este caso, la longitud de la palabra).
         """
         for var in self.dominios:
-            for palabra in set(self.dominios[var]):
-                if len(palabra) != var.longitud:
-                    self.dominios[var].remove(palabra)
+            self.dominios[var] = {palabra for palabra in self.dominios[var] if len(palabra) == var.longitud}
 
     def revisar(self, x, y):
         """
@@ -113,17 +111,20 @@ class CreadorCrucigrama():
         False si no se ha hecho ninguna revisión.
         """
         revisado = False
-        i, j = self.crucigrama.solapamientos[x, y]
+
+        solapamiento = self.crucigrama.solapamientos.get((x,y))
+        if not solapamiento:
+            return revisado
+
+        i,j = solapamiento
+
         for palabra_x in set(self.dominios[x]):
-            cumple_restriccion = False
-            for palabra_y in self.dominios[y]:
-                if palabra_x[i] == palabra_y[j]:
-                    cumple_restriccion = True
-                    break
+            cumple_restriccion = any(palabra_x[i] == palabra_y[j] for palabra_y in self.dominios[y])
             if not cumple_restriccion:
                 self.dominios[x].remove(palabra_x)
                 revisado = True
         return revisado
+
 
     def ac3(self, arcs=None): #Visite https://en.wikipedia.org/wiki/AC-3_algorithm para conocer la historia
         """
@@ -136,6 +137,8 @@ class CreadorCrucigrama():
         """
         if arcs is None:
             arcs = [(x, y) for x in self.dominios for y in self.crucigrama.vecinos(x)]
+        else:
+            arcs = list(arcs)
 
         while arcs:
             (x, y) = arcs.pop()
