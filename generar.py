@@ -1,5 +1,4 @@
 import sys
-
 from crucigrama import *
 
 class CreadorCrucigrama():
@@ -112,11 +111,11 @@ class CreadorCrucigrama():
         """
         revisado = False
 
-        solapamiento = self.crucigrama.solapamientos.get((x,y))
+        solapamiento = self.crucigrama.solapamientos.get((x, y))
         if not solapamiento:
             return revisado
 
-        i,j = solapamiento
+        i, j = solapamiento
 
         for palabra_x in set(self.dominios[x]):
             cumple_restriccion = any(palabra_x[i] == palabra_y[j] for palabra_y in self.dominios[y])
@@ -125,8 +124,7 @@ class CreadorCrucigrama():
                 revisado = True
         return revisado
 
-
-    def ac3(self, arcs=None): #Visite https://en.wikipedia.org/wiki/AC-3_algorithm para conocer la historia
+    def ac3(self, arcs=None): 
         """
         Actualizar `self.dominios` de tal manera que cada variable sea consistencia de arco.
         Si `arcs` es None, comienza con la lista inicial de todos los arcos del problema.
@@ -196,11 +194,8 @@ class CreadorCrucigrama():
         """
         no_asignadas = [v for v in self.crucigrama.variables if v not in asignacion]
 
-        # Heurística: mínimo número de valores restantes
-        no_asignadas.sort(key=lambda var: len(self.dominios[var]))
-
-        # Heurística: grado
-        no_asignadas.sort(key=lambda var: len(self.crucigrama.vecinos(var)), reverse=True)
+        # Heurística combinada: primero mínimo número de valores restantes y luego grado
+        no_asignadas.sort(key=lambda var: (len(self.dominios[var]), -len(self.crucigrama.vecinos(var))))
 
         return no_asignadas[0]
 
@@ -223,55 +218,46 @@ class CreadorCrucigrama():
 
     def backtrack(self, asignacion):
         """
-        Usando la Búsqueda Backtrack, toma como entrada una asignación parcial para el
-        crucigrama y devuelve una asignación completa si es posible hacerlo.
-
-        `asignacion` es un mapeo de variables (claves) a palabras (valores).
-
-        Si no es posible la asignación, devuelve None.
+        Utiliza el algoritmo de backtracking para encontrar una asignación.
         """
         if self.asignacion_completa(asignacion):
             return asignacion
 
         var = self.seleccionar_variable_no_asignada(asignacion)
+
         for valor in self.ordenar_valores_dominio(var, asignacion):
-            if self.consistencia(asignacion):
-                asignacion[var] = valor
-                inferences = self.inferencia(asignacion, var)
+            nueva_asignacion = asignacion.copy()
+            nueva_asignacion[var] = valor
+
+            if self.consistencia(nueva_asignacion):
+                inferences = self.inferencia(nueva_asignacion, var)
+
                 if inferences is not None:
-                    self.dominios.update(inferences)
-                    resultado = self.backtrack(asignacion)
-                    if resultado is not None:
+                    for variable, valores in inferences.items():
+                        self.dominios[variable] = valores
+
+                    resultado = self.backtrack(nueva_asignacion)
+
+                    if resultado:
                         return resultado
-                    for infer_var in inferences:
-                        self.dominios[infer_var] = inferences[infer_var]
-                asignacion.pop(var)
+
+                    for variable in inferences:
+                        self.dominios[variable] = inferences[variable]
+
         return None
 
-
-def main():
-
-    # Verificar parametros
-    if len(sys.argv) not in [3, 4]:
-        sys.exit("Usage: python generate.py estructura palabras [output]")
-
-    # Parseo de los argumentos
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        sys.exit("Usage: python generate.py estructura palabras")
     estructura = sys.argv[1]
     palabras = sys.argv[2]
-    output = sys.argv[3] if len(sys.argv) == 4 else None
 
-    # Generar el crucigrama
     crucigrama = Crucigrama(estructura, palabras)
     creador = CreadorCrucigrama(crucigrama)
     asignacion = creador.solve()
 
-    # Print result
     if asignacion is None:
-        print("No hay solucion PE")
+        print("No se encontró una solución.")
     else:
         creador.print(asignacion)
-        if output:
-            creador.save(asignacion, output)
-
-if __name__ == "__main__":
-    main()
+        creador.save(asignacion, "salida.png")
